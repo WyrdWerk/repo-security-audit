@@ -1,7 +1,7 @@
 ---
 name: repo-security-audit
 description: Quick security checklist for evaluating GitHub repos and npm packages before/after installation. For non-coders and users. Heavy details live in references/.
-version: "1.1.0"
+version: "1.2.0"
 metadata:
   hermes:
     tags: [solvency, security, npm, github, supply-chain]
@@ -25,9 +25,13 @@ Non-coders who install tools and dependencies but don't maintain packages.
 
 ---
 
-## Quick Reference: Three Phases
+## Quick Reference: Two Levels
 
-### Phase 1: Before You Install
+### Level 1 — Surface Check (Always Available)
+
+No extra tools needed. Just `curl`, `npm`, and `jq`.
+
+#### Before You Install
 
 ```bash
 # 1. Check the package on npm registry
@@ -42,7 +46,7 @@ curl -s https://api.github.com/repos/OWNER/REPO | jq '{stars: .stargazers_count,
 
 **If any of these look suspicious:** low downloads, recent publish with no history, install scripts present, stale repo — pause and investigate.
 
-### Phase 2: Safe Installation
+#### Safe Installation
 
 ```bash
 # Block ALL hidden code from running during install
@@ -52,7 +56,7 @@ npm install --ignore-scripts --allow-git=none
 npx PACKAGE_NAME@VERSION
 ```
 
-### Phase 3: After You Install
+#### After You Install
 
 ```bash
 # Check for persistence files (run this after ANY unfamiliar install)
@@ -66,6 +70,30 @@ grep -rE "fetch\(|https?://|child_process|spawn|exec\(|process\.env|eval\(" node
 # Run npm audit for known vulnerabilities
 npm audit
 ```
+
+### Level 2 — Deep Dive (Requires Security Toolkit)
+
+**Prerequisite:** Run `bash scripts/install-security-toolkit.sh` to install the 5 tools below. These are only needed when you want full code-level assurance before putting a repo on your main system.
+
+```bash
+# Clone to temp first — NEVER --recursive on untrusted repos
+git clone --no-recursive https://github.com/OWNER/REPO /tmp/repo-audit-$RANDOM
+cd /tmp/repo-audit-*
+
+# Secret scan — checks entire Git history
+gitleaks detect --source .
+
+# Suspicious code patterns — AST analysis, not just text grep
+semgrep scan -q -d .
+
+# Known vulnerabilities in dependencies
+osv-scanner scan -r .
+
+# Everything-at-once: vulns + secrets + config issues
+trivy fs --security-checks vuln,config,secret .
+```
+
+**Only after clean results** — migrate to `~/projects/`.
 
 ---
 
@@ -118,5 +146,6 @@ When reporting findings:
 
 ## Changelog
 
+- v1.2.0 — Split into Level 1 (Surface Check, always available) and Level 2 (Deep Dive, requires security toolkit install). Install script bugs fixed (local vars, checksum URLs, grep mismatch).
 - v1.1.0 — Refactored: SKILL.md is now lightweight quick-reference; all detailed patterns moved to `references/security-patterns-comprehensive.md` (comprehensive, ~12KB, growable).
 - v1.0.0 — Initial monolithic skill covering TanStack incident patterns.

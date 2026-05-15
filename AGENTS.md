@@ -17,7 +17,7 @@ This is a **Hermes skill** for repository and package security auditing. It was 
 
 ### 1. Read the Context First
 
-Start with `CONVERSATION.md` in this repo. It contains the full session transcript that led to this skill's creation. You'll understand:
+Start with `CONCEPT.md` in this repo. It traces the conceptual evolution of this repository from origin to current state. You'll understand:
 - Why the skill was split into lightweight + comprehensive
 - What attack patterns were prioritized
 - What the user's voice sounds like (important if you're writing content from their perspective)
@@ -33,22 +33,21 @@ Start with `CONVERSATION.md` in this repo. It contains the full session transcri
 
 ### 3. Understand the Staged Framework
 
-Every security check follows **three stages**:
+Every security check follows **two levels**:
 
 | Stage | Commitment | When to Use |
 |-------|-----------|-------------|
-| **1. Remote Recon** | Zero — just `curl` and `npm info` | Always, before any clone or install |
-| **2. Surface Red Flags** | Zero — still HTTP calls only | If Stage 1 passes but you're cautious |
-| **3. Deep Audit** | Clone to `/tmp` first, isolated | If you want certainty before putting it on your main system |
+| **1. Surface Check** | Zero — just `curl`, `npm`, `jq` | Always, before any clone or install |
+| **2. Deep Dive** | Requires security toolkit (`gitleaks`, `semgrep`, `osv-scanner`, `trivy`) | If you want certainty before putting it on your main system |
 
-**Never skip Stage 1.** Most compromises can be spotted without downloading anything.
+**Never skip Level 1.** Most compromises can be spotted without downloading anything.
 
 ### 4. Extending the Skill
 
 When a new attack pattern emerges:
 1. Add it to `references/security-patterns-comprehensive.md` under "Known Attack Patterns"
 2. Include: How it works, real incident with date, defense, command if applicable
-3. If it affects Stage 1 or 2, add a row to the quick-reference table in `SKILL.md`
+3. If it affects Level 1, add a row to the quick-reference table in `SKILL.md`
 4. Update the Changelog in both files
 5. If it introduces a new tool, add it to "Well-Known Security Tooling Repos" with star count and command
 
@@ -70,7 +69,7 @@ When a new attack pattern emerges:
 - No blind `sudo` on downloaded content
 - npq is self-audited before install
 
-**Before modifying the script:** Audit any new install commands with the same staged framework. See the install commands audit in `CONVERSATION.md`.
+**Before modifying the script:** Audit any new install commands with the same staged framework. See the install commands audit in `CONCEPT.md`.
 
 ### 6. Content Creation from This Skill
 
@@ -94,7 +93,7 @@ Never assert without evidence.
 
 1. **User perspective is non-coder.** No CI/CD hardening advice that doesn't apply to them.
 2. **Split architecture.** Lightweight skill + growable references. Don't merge them.
-3. **Stage 1-2 before clone.** Remote recon saves you from 90% of threats without downloading anything.
+3. **Level 1 before Level 2.** Surface Check saves you from 90% of threats without downloading anything.
 4. **Install scripts are self-audited.** The security tools' own install commands were checked with the same framework.
 5. **Sandbox is future work.** systemd-nspawn dev sandbox was discussed but deferred. Don't promise it without building it.
 
@@ -118,7 +117,7 @@ Never assert without evidence.
 | `references/security-patterns-comprehensive.md` | Detailed attack patterns, commands, tooling | Agents (append-only) |
 | `AGENTS.md` | This file — operational guide for future agents | Agents (update when process changes) |
 | `README.md` | User-facing overview | Agents (update when scope changes) |
-| `CONVERSATION.md` | Full session context and decisions | Read-only (historical record) |
+| `CONCEPT.md` | Conceptual evolution of the repository architecture | Read-only (historical record) |
 | `RESEARCH.md` | Embedded parallel research artifact | Read-only (historical record) |
 | `scripts/install-security-toolkit.sh` | Installer for 5 security tools | Agents (when adding new tools) |
 

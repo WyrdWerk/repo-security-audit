@@ -321,11 +321,15 @@ grep -r "id-token: write" .github/workflows/ 2>/dev/null
 
 ---
 
-## Invocation Strategy: How Tools Fire in Practice
+## Invocation Strategy: Two Levels, Conditional Deep Dive
 
-Security checks run in **stages**, not all at once. Early stages need no clone. Deep audit only happens if the repo passes surface checks or if you explicitly want certainty.
+Security checks run in **levels**, not all at once. Level 1 needs no extra tools and no clone. Level 2 (Deep Dive) requires the security toolkit and a clone to temp — only run it when you want full code-level assurance.
 
-### Stage 1: Remote Recon (No Clone Needed)
+### Level 1 — Surface Check (Always Available)
+
+No extra tools needed. Just `curl`, `npm`, and `jq`.
+
+#### Part A: Remote Recon (No Clone Needed)
 
 **Goal:** Determine if the repo is worth investigating further.
 
@@ -342,7 +346,7 @@ curl -s "https://api.github.com/advisories?affected=PACKAGE_NAME" | jq '.[] | {c
 
 **What this catches:** Abandoned repos, low-trust packages, install scripts present, known CVEs.
 
-### Stage 2: Surface Red Flags (Still No Clone)
+#### Part B: Surface Red Flags (Still No Clone)
 
 **Goal:** Spot abuse vectors without downloading anything.
 
@@ -365,7 +369,24 @@ curl -s https://api.github.com/repos/OWNER/REPO/commits?per_page=5 | jq '.[].com
 
 **What this catches:** Exotic deps, VS Code task abuse, AI agent injection, CI misconfigurations, suspicious commit authors.
 
-### Stage 3: Deep Audit (Requires Clone — Isolated First)
+#### Part C: After You Install
+
+```bash
+# Check for persistence files (run this after ANY unfamiliar install)
+ls ~/.local/bin/gh-token-monitor.sh ~/.config/systemd/user/gh-token-monitor.service ~/Library/LaunchAgents/com.user.gh-token-monitor.plist 2>/dev/null
+ls -d .claude/ .vscode/ 2>/dev/null
+find . -name "router_init.js" -o -name "tanstack_runner.js" -o -name "setup.mjs" 2>/dev/null
+
+# Check for suspicious patterns in the package
+grep -rE "fetch\(|https?://|child_process|spawn|exec\(|process\.env|eval\(" node_modules/PACKAGE_NAME/ 2>/dev/null | head -10
+
+# Run npm audit for known vulnerabilities
+npm audit
+```
+
+### Level 2 — Deep Dive (Requires Security Toolkit)
+
+**Prerequisite:** Run `bash scripts/install-security-toolkit.sh` to install the 5 tools below.
 
 **Goal:** Full code-level assurance before the repo touches your main system.
 
@@ -394,18 +415,18 @@ trivy fs --security-checks vuln,config,secret .
 
 ### Which Tool When — Quick Decision Table
 
-| You Want To Know | Stage | Tool | Needs Clone? |
+| You Want To Know | Level | Tool | Needs Clone? |
 |-----------------|-------|------|-------------|
 | Is this repo trustworthy at a glance? | 1 | GitHub API + npm info | No |
 | Does it have known CVEs? | 1 | GitHub Advisory DB | No |
-| Are there hidden install scripts? | 1-2 | `npm info` scripts field | No |
-| Are there exotic dependencies? | 2 | Raw `package.json` curl | No |
-| Could VS Code execute malware on open? | 2 | Raw `.vscode/tasks.json` curl | No |
-| Is AI agent injection present? | 2 | `.claude/` / `.cursorrules` check | No |
-| Are there leaked secrets in Git history? | 3 | gitleaks | Yes |
-| Are there suspicious code patterns? | 3 | semgrep | Yes |
-| Are dependencies vulnerable? | 3 | osv-scanner | Yes |
-| Comprehensive scan everything? | 3 | trivy | Yes |
+| Are there hidden install scripts? | 1 | `npm info` scripts field | No |
+| Are there exotic dependencies? | 1 | Raw `package.json` curl | No |
+| Could VS Code execute malware on open? | 1 | Raw `.vscode/tasks.json` curl | No |
+| Is AI agent injection present? | 1 | `.claude/` / `.cursorrules` check | No |
+| Are there leaked secrets in Git history? | 2 | gitleaks | Yes |
+| Are there suspicious code patterns? | 2 | semgrep | Yes |
+| Are dependencies vulnerable? | 2 | osv-scanner | Yes |
+| Comprehensive scan everything? | 2 | trivy | Yes |
 
 ---
 
@@ -485,5 +506,6 @@ git submodule update
 
 ## Changelog
 
+- v1.2.0 — Refactored: Replaced "Three Stages" with "Two Levels" architecture. Level 1 = Surface Check (always available, no extra tools). Level 2 = Deep Dive (requires security toolkit). Install script bugs fixed (local vars, checksum URLs, grep mismatch).
 - v1.1.0 — Added: CVE-2024-32002 (Git submodule RCE), repojacking, VS Code tasks.json abuse, secret leakage stats, prompt injection via comments, additional ATO examples (eslint-config-prettier, s1ngularity Nx). Added tools: gitleaks, semgrep, osv-scanner, trivy, TruffleHog. Added safe cloning commands and pre-install tool commands.
 - v1.0.0 — Initial comprehensive reference covering TanStack, Axios, chalk/debug patterns, telemetry checks, persistence detection, and AI-era risks.

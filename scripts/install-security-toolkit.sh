@@ -40,13 +40,13 @@ fi
 verify_github_checksum() {
     local binary_file="$1"
     local checksums_url="$2"
-    local binary_basename=$(basename "$binary_file")
-    
+    local search_name="${3:-$(basename "$binary_file")}"
+
     echo -e "${BLUE}  Verifying SHA256 checksum...${NC}"
     wget -qO "$TMPDIR/checksums.txt" "$checksums_url"
-    local expected_hash=$(grep "$binary_basename" "$TMPDIR/checksums.txt" | awk '{print $1}')
+    local expected_hash=$(grep "$search_name" "$TMPDIR/checksums.txt" | awk '{print $1}')
     local actual_hash=$(sha256sum "$binary_file" | awk '{print $1}')
-    
+
     if [[ "$expected_hash" == "$actual_hash" ]]; then
         echo -e "${GREEN}  ✓ Checksum verified: $actual_hash${NC}"
         return 0
@@ -78,14 +78,14 @@ else
     GITLEAKS_VERSION=$(curl -s "https://api.github.com/repos/gitleaks/gitleaks/releases/latest" | grep -Po '"tag_name": "v\K[0-9.]+')
     echo -e "${BLUE}  Version: v${GITLEAKS_VERSION}${NC}"
     
-    local binary_name="gitleaks_${GITLEAKS_VERSION}_${GITLEAKS_ARCH}.tar.gz"
-    local download_url="https://github.com/gitleaks/gitleaks/releases/latest/download/${binary_name}"
-    local checksums_url="https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+    binary_name="gitleaks_${GITLEAKS_VERSION}_${GITLEAKS_ARCH}.tar.gz"
+    download_url="https://github.com/gitleaks/gitleaks/releases/latest/download/${binary_name}"
+    checksums_url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
     
     echo -e "${BLUE}  Downloading ${binary_name}...${NC}"
     wget -q --show-progress -O "$TMPDIR/gitleaks.tar.gz" "$download_url"
     
-    if verify_github_checksum "$TMPDIR/gitleaks.tar.gz" "$checksums_url"; then
+    if verify_github_checksum "$TMPDIR/gitleaks.tar.gz" "$checksums_url" "$binary_name"; then
         echo -e "${BLUE}  Extracting to /usr/local/bin...${NC}"
         sudo tar xf "$TMPDIR/gitleaks.tar.gz" -C /usr/local/bin gitleaks
         sudo chmod +x /usr/local/bin/gitleaks
@@ -151,13 +151,13 @@ else
         fi
     else
         echo -e "${BLUE}  Downloading official binary...${NC}"
-        local binary_name="osv-scanner_${OSV_VERSION}_${OSV_ARCH}"
-        local download_url="https://github.com/google/osv-scanner/releases/latest/download/${binary_name}"
-        local checksums_url="https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_${OSV_VERSION}_checksums.txt"
+        binary_name="osv-scanner_${OSV_VERSION}_${OSV_ARCH}"
+        download_url="https://github.com/google/osv-scanner/releases/latest/download/${binary_name}"
+        checksums_url="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_${OSV_VERSION}_checksums.txt"
         
         wget -q --show-progress -O "$TMPDIR/osv-scanner" "$download_url"
         
-        if verify_github_checksum "$TMPDIR/osv-scanner" "$checksums_url"; then
+        if verify_github_checksum "$TMPDIR/osv-scanner" "$checksums_url" "$binary_name"; then
             sudo cp "$TMPDIR/osv-scanner" /usr/local/bin/osv-scanner
             sudo chmod +x /usr/local/bin/osv-scanner
         else
@@ -215,19 +215,19 @@ else
     npm info npq --json 2>/dev/null | jq '{version: .version, date: .time[.version], downloads: .downloads["last-week"], maintainers: .maintainers | length, scripts: (.scripts | keys)}' || true
     
     # Stage 2: Check for install scripts
-    local install_scripts=$(npm info npq --json 2>/dev/null | jq -r '.scripts | to_entries[] | select(.key | test("install|prepare|postinstall|preinstall")) | .key' || true)
+    install_scripts=$(npm info npq --json 2>/dev/null | jq -r '.scripts | to_entries[] | select(.key | test("install|prepare|postinstall|preinstall")) | .key' || true)
     if [[ -n "$install_scripts" ]]; then
         echo -e "${YELLOW}  ⚠ Install scripts detected: $install_scripts${NC}"
         echo -e "${YELLOW}  Installing with --ignore-scripts first...${NC}"
         npm install -g --ignore-scripts npq
-        
+
         # Verify what was installed
-        local npq_dir=$(npm root -g)/npq
+        npq_dir=$(npm root -g)/npq
         echo -e "${BLUE}  Verifying installed contents...${NC}"
         ls -la "$npq_dir/" 2>/dev/null | head -10 || true
-        
+
         # Check package.json scripts in installed version
-        local installed_scripts=$(cat "$npq_dir/package.json" 2>/dev/null | jq -r '.scripts | to_entries[] | select(.key | test("install|prepare|postinstall|preinstall")) | .key' || true)
+        installed_scripts=$(cat "$npq_dir/package.json" 2>/dev/null | jq -r '.scripts | to_entries[] | select(.key | test("install|prepare|postinstall|preinstall")) | .key' || true)
         if [[ -n "$installed_scripts" ]]; then
             echo -e "${YELLOW}  ⚠ Scripts present but not executed. Review before re-installing without --ignore-scripts:${NC}"
             echo -e "${YELLOW}    $installed_scripts${NC}"
@@ -249,7 +249,7 @@ echo -e "${BLUE}=== Installation Summary ===${NC}"
 echo ""
 for tool in gitleaks semgrep osv-scanner trivy npq; do
     if command -v "$tool" &> /dev/null; then
-        local version=$($tool version 2>/dev/null || $tool --version 2>/dev/null || echo "unknown")
+        version=$($tool version 2>/dev/null || $tool --version 2>/dev/null || echo "unknown")
         echo -e "${GREEN}✓ $tool: $version${NC}"
     else
         echo -e "${RED}✗ $tool: NOT FOUND${NC}"
