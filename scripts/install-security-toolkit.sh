@@ -191,9 +191,9 @@ else
         fi
     else
         echo -e "${BLUE}  Downloading official binary...${NC}"
-        binary_name="osv-scanner_${OSV_VERSION}_${OSV_OS_ARCH}"
+        binary_name="osv-scanner_${OSV_OS_ARCH}"
         download_url="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/${binary_name}"
-        checksums_url="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_${OSV_VERSION}_checksums.txt"
+        checksums_url="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_SHA256SUMS"
 
         wget -q --show-progress -O "$TMPDIR/osv-scanner" "$download_url"
 
