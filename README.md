@@ -1,34 +1,34 @@
 # Repository Security Audit
 
-A Hermes skill for evaluating GitHub repositories and npm packages from a **user's perspective** — someone who installs tools but doesn't maintain packages.
+A security checklist for anyone who installs open-source tools or npm packages but doesn't maintain them. That was us before we built this.
 
-## Why This Exists
+## Why we made this
 
-The TanStack npm supply chain compromise (May 11, 2026) proved that the old security playbook isn't enough. The attacker published 84 malicious versions with valid signatures, using the project's own CI pipeline. No passwords were stolen. The malware activated during `npm install`, harvested credentials, and spread like a worm.
+In May 2026, the TanStack npm package got compromised. The attacker pushed 84 malicious versions through the project's own CI pipeline. No passwords stolen. The malware simply ran during `npm install`, grabbed credentials, and spread to other packages like a worm.
 
-This skill gives you a **staged framework** to check repos and packages before they touch your system.
+We realized there wasn't a simple, staged way for a non-coder to check a repo or package before letting it run on their machine. So we built one.
+
+## How it works: two levels
+
+**Level 1 — Surface Check (no tools needed)**
+
+Before you install anything, check it remotely. Stars, commit history, install scripts, known CVEs, exotic dependencies. All you need is `curl`, `npm`, and `jq`. No download. No clone.
+
+Most bad actors show their hand here.
+
+**Level 2 — Deep Dive (install the toolkit)**
+
+If you want code-level certainty before a repo touches your main system, install five security tools and run them against a temporary clone in `/tmp`.
 
 ---
 
-## Two Levels
-
-### Level 1: Surface Check (No Clone, No Extra Tools)
-Check stars, commits, install scripts, known CVEs, exotic dependencies — all with just `curl`, `npm`, and `jq`. No download required.
-
-### Level 2: Deep Dive (Requires Security Toolkit)
-Run gitleaks, semgrep, osv-scanner, trivy on an isolated `/tmp` clone before migrating to your main system.
-
-**Most threats can be spotted in Level 1.** You rarely need Level 2.
-
----
-
-## Quick Start
+## Quick start
 
 ```bash
 # Before installing anything
 npm info PACKAGE_NAME --json | jq '{scripts: (.scripts | keys), downloads: .downloads["last-week"]}'
 
-# Install safely
+# Install safely — block hidden code from running
 npm install --ignore-scripts --allow-git=none
 
 # After installing, check for persistence
@@ -36,42 +36,46 @@ ls ~/.local/bin/gh-token-monitor.sh 2>/dev/null
 find . -name "router_init.js" -o -name "setup.mjs" 2>/dev/null
 ```
 
-For full detail, load `references/security-patterns-comprehensive.md`.
+For the full command reference, see `references/security-patterns-comprehensive.md`.
 
 ---
 
-## Files
+## Security toolkit
 
-| File | Purpose |
-|------|---------|
-| `SKILL.md` | Lightweight quick-reference skill |
-| `AGENT_ADOPTION.md` | Agent-agnostic adoption guide (any AI agent can use this) |
-| `references/security-patterns-comprehensive.md` | Full attack patterns, commands, tooling |
-| `AGENTS.md` | Operational guide for agents continuing this work |
-| `RESEARCH.md` | Embedded deep research on supply chain threats |
-| `scripts/install-security-toolkit.sh` | Installer for Linux / macOS (x86_64, amd64, aarch64, arm64) |
-| `scripts/install-security-toolkit.ps1` | Installer for Windows (x64/AMD64) |
+Five tools we audited and installed ourselves. Each has a verified release process and active maintenance.
+
+| Tool | What it does | Stars | Runs on |
+|------|-------------|-------|---------|
+| **gitleaks** | Scans git history for leaked secrets | 18k+ | Linux, macOS, Windows |
+| **semgrep** | Finds suspicious code patterns with static analysis | 15k+ | Any OS (via Python) |
+| **osv-scanner** | Checks dependencies against known vulnerability databases | 6k+ | Linux, macOS, Windows |
+| **trivy** | Comprehensive scan: vulnerabilities, secrets, config issues | 25k+ | Linux, macOS, Windows |
+| **npq** | Audits npm packages before you install them | ~500 | Any OS (via Node.js) |
+
+**Install it:**
+
+- **Linux / macOS** (Intel or Apple Silicon): `bash scripts/install-security-toolkit.sh`
+- **Windows** (x64): `PowerShell -ExecutionPolicy Bypass -File scripts/install-security-toolkit.ps1`
+
+Both scripts verify checksums where possible and skip tools that are already installed.
 
 ---
 
-## Security Toolkit
+## What's in this repo
 
-Five tools, installed via platform-native scripts with checksum verification:
-
-| Tool | What It Does | Stars | Platforms |
-|------|-------------|-------|-----------|
-| **gitleaks** | Find leaked secrets in Git history | 18k+ | Linux, macOS, Windows; x64 + ARM64 |
-| **semgrep** | Static analysis for suspicious code | 15k+ | Any (Python pip) |
-| **osv-scanner** | Check dependencies for known CVEs | 6k+ | Linux, macOS, Windows; x64 + ARM64 |
-| **trivy** | Comprehensive vuln + secret + config scan | 25k+ | Linux, macOS, Windows; x64 + ARM64 |
-| **npq** | Pre-install npm package sanity check | ~500 | Any (Node.js) |
-
-**Install:**
-- **Linux / macOS:** `bash scripts/install-security-toolkit.sh`
-- **Windows:** `PowerShell -ExecutionPolicy Bypass -File scripts/install-security-toolkit.ps1`
+| File | What it does |
+|------|-------------|
+| `SKILL.md` | Quick reference for Hermes. Lightweight. Under 6KB. |
+| `AGENT_ADOPTION.md` | The full guide — any AI agent can read and follow this, no framework lock-in. |
+| `references/security-patterns-comprehensive.md` | Detailed attack patterns, real incidents with dates, commands, and tooling reference. This file grows as new threats emerge. |
+| `AGENTS.md` | How we work — voice guidelines, confidence labels, extension rules. |
+| `CONCEPT.md` | How this repo evolved from a single panic-driven doc to a structured skill. |
+| `RESEARCH.md` | Raw research output (~3,500 words) on npm supply chain threats 2024-2026. |
+| `scripts/install-security-toolkit.sh` | Linux / macOS installer. Detects your OS and architecture automatically. |
+| `scripts/install-security-toolkit.ps1` | Windows installer. Uses PowerShell-native commands. |
 
 ---
 
 ## License
 
-MIT. Use it, extend it, share it. The threat landscape changes faster than any one team can track.
+MIT. Use it, extend it, share it.
