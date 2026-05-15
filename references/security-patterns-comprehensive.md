@@ -386,7 +386,10 @@ npm audit
 
 ### Level 2 — Deep Dive (Requires Security Toolkit)
 
-**Prerequisite:** Run `bash scripts/install-security-toolkit.sh` to install the 5 tools below.
+**Prerequisite:** Install the 5 tools below using the appropriate installer for your platform.
+
+- **Linux / macOS:** `bash scripts/install-security-toolkit.sh` (supports x86_64, amd64, aarch64, arm64)
+- **Windows:** `PowerShell -ExecutionPolicy Bypass -File scripts/install-security-toolkit.ps1` (supports x64/AMD64)
 
 **Goal:** Full code-level assurance before the repo touches your main system.
 
@@ -459,10 +462,10 @@ echo "=== Persistence ==="; ls ~/.local/bin/gh-token-monitor.sh ~/.config/system
 | [pnpm/pnpm](https://github.com/pnpm/pnpm) | 30k+ | pnpm package manager | Reference for `trustPolicy`, `blockExoticSubdeps` |
 | [step-security/harden-runner](https://github.com/step-security/harden-runner) | ~2k | GitHub Actions security monitoring | Reference for CI hardening |
 | [GitHub Advisory Database](https://github.com/advisories) | N/A | Official vulnerability database | Yes — check packages before install |
-| [gitleaks](https://github.com/gitleaks/gitleaks) | 18k+ | Secret scanner for repos and CI | Yes — `gitleaks detect --source .` finds leaked secrets |
-| [semgrep](https://github.com/semgrep/semgrep) | 15k+ | Lightweight static analysis | Yes — `semgrep scan -q -d .` finds suspicious patterns |
-| [osv-scanner](https://github.com/google/osv-scanner) | 6k+ | Vulnerability lookup via OSV database | Yes — `osv-scanner scan -r .` checks for known CVEs |
-| [trivy](https://github.com/aquasecurity/trivy) | 25k+ | Config & secret scanner for repos | Yes — `trivy fs --security-checks vuln,config .` comprehensive scan |
+| [gitleaks](https://github.com/gitleaks/gitleaks) | 18k+ | Secret scanner for repos and CI | Yes — `gitleaks detect --source .`. Binaries for Linux, macOS, Windows; x64 + ARM64 |
+| [semgrep](https://github.com/semgrep/semgrep) | 15k+ | Lightweight static analysis | Yes — `semgrep scan -q -d .`. Python package: runs on any OS via `pip install` |
+| [osv-scanner](https://github.com/google/osv-scanner) | 6k+ | Vulnerability lookup via OSV database | Yes — `osv-scanner scan -r .`. Binaries for Linux, macOS, Windows; x64 + ARM64 + SLSA3 provenance |
+| [trivy](https://github.com/aquasecurity/trivy) | 25k+ | Config & secret scanner for repos | Yes — `trivy fs --security-checks vuln,config .`. APT, RPM, Homebrew, WinGet, Scoop; x64 + ARM64 |
 | [TruffleHog](https://github.com/trufflesecurity/trufflehog) | 16k+ | Deep secret scanner | Reference — used by Shai-Hulud attackers to find 26,300 exposed repos |
 
 ---

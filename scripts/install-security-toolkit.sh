@@ -1,7 +1,8 @@
 #!/bin/bash
 # Security Toolkit Installer
+# Supports: Linux (x86_64, aarch64/arm64) and macOS (Intel, Apple Silicon)
 # Installs: gitleaks, semgrep, osv-scanner, trivy, npq
-# Verifies checksums, uses safe practices, architecture-aware
+# Verifies checksums, uses safe practices, architecture-aware and OS-aware
 # Run with: bash install-security-toolkit.sh
 
 set -euo pipefail
@@ -13,30 +14,59 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Config
+# Detect OS and architecture
+OS=$(uname -s)
 ARCH=$(uname -m)
 TMPDIR=$(mktemp -d)
 trap "rm -rf $TMPDIR" EXIT
 
 echo -e "${BLUE}=== Security Toolkit Installer ===${NC}"
-echo -e "${BLUE}Architecture detected: $ARCH${NC}"
+echo -e "${BLUE}OS detected:    $OS${NC}"
+echo -e "${BLUE}Architecture:   $ARCH${NC}"
 echo ""
 
-# Architecture mapping
-if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
-    GITLEAKS_ARCH="linux_arm64"
-    OSV_ARCH="linux_arm64"
-    TRIVY_ARCH="Linux-ARM64"
-elif [[ "$ARCH" == "x86_64" ]]; then
-    GITLEAKS_ARCH="linux_x64"
-    OSV_ARCH="linux_amd64"
-    TRIVY_ARCH="Linux-64bit"
+# =============================================================================
+# Normalize architecture for upstream naming conventions
+# =============================================================================
+# Common arch outputs from uname -m:
+#   x86_64, amd64   → Intel/AMD 64-bit
+#   aarch64, arm64  → ARM 64-bit (Apple Silicon, AWS Graviton, etc.)
+#   i386, i686      → 32-bit (not supported by any upstream releases)
+# =============================================================================
+
+if [[ "$ARCH" == "x86_64" || "$ARCH" == "amd64" ]]; then
+    ARCH_TYPE="amd64"
+elif [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
+    ARCH_TYPE="arm64"
 else
     echo -e "${RED}Unsupported architecture: $ARCH${NC}"
+    echo -e "${RED}Supported: x86_64, amd64, aarch64, arm64${NC}"
     exit 1
 fi
 
+# Per-tool asset naming (each upstream uses slightly different conventions)
+if [[ "$OS" == "Linux" ]]; then
+    GITLEAKS_OS_ARCH="linux_${ARCH_TYPE}"
+    OSV_OS_ARCH="linux_${ARCH_TYPE}"
+    TRIVY_OS_ARCH="Linux-${ARCH_TYPE^^}"  # e.g. Linux-AMD64, Linux-ARM64
+    INSTALL_DIR="/usr/local/bin"
+    USE_SUDO=true
+elif [[ "$OS" == "Darwin" ]]; then
+    GITLEAKS_OS_ARCH="darwin_${ARCH_TYPE}"
+    OSV_OS_ARCH="darwin_${ARCH_TYPE}"
+    TRIVY_OS_ARCH="macOS-${ARCH_TYPE^^}"  # e.g. macOS-AMD64, macOS-ARM64
+    INSTALL_DIR="/usr/local/bin"
+    USE_SUDO=true
+else
+    echo -e "${RED}Unsupported operating system: $OS${NC}"
+    echo -e "${RED}Supported: Linux, Darwin (macOS)${NC}"
+    exit 1
+fi
+
+# =============================================================================
 # Helper functions
+# =============================================================================
+
 verify_github_checksum() {
     local binary_file="$1"
     local checksums_url="$2"
@@ -67,6 +97,18 @@ check_installed() {
     return 1
 }
 
+install_binary() {
+    local src="$1"
+    local dest="$2"
+    if [[ "$USE_SUDO" == true ]]; then
+        sudo cp "$src" "$dest"
+        sudo chmod +x "$dest"
+    else
+        cp "$src" "$dest"
+        chmod +x "$dest"
+    fi
+}
+
 # =============================================================================
 # 1. gitleaks
 # =============================================================================
@@ -77,18 +119,18 @@ else
     echo -e "${BLUE}  Fetching latest release info...${NC}"
     GITLEAKS_VERSION=$(curl -s "https://api.github.com/repos/gitleaks/gitleaks/releases/latest" | grep -Po '"tag_name": "v\K[0-9.]+')
     echo -e "${BLUE}  Version: v${GITLEAKS_VERSION}${NC}"
-    
-    binary_name="gitleaks_${GITLEAKS_VERSION}_${GITLEAKS_ARCH}.tar.gz"
-    download_url="https://github.com/gitleaks/gitleaks/releases/latest/download/${binary_name}"
+
+    binary_name="gitleaks_${GITLEAKS_VERSION}_${GITLEAKS_OS_ARCH}.tar.gz"
+    download_url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${binary_name}"
     checksums_url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
-    
+
     echo -e "${BLUE}  Downloading ${binary_name}...${NC}"
     wget -q --show-progress -O "$TMPDIR/gitleaks.tar.gz" "$download_url"
-    
+
     if verify_github_checksum "$TMPDIR/gitleaks.tar.gz" "$checksums_url" "$binary_name"; then
-        echo -e "${BLUE}  Extracting to /usr/local/bin...${NC}"
-        sudo tar xf "$TMPDIR/gitleaks.tar.gz" -C /usr/local/bin gitleaks
-        sudo chmod +x /usr/local/bin/gitleaks
+        echo -e "${BLUE}  Extracting to ${INSTALL_DIR}...${NC}"
+        tar xf "$TMPDIR/gitleaks.tar.gz" -C "$TMPDIR" gitleaks
+        install_binary "$TMPDIR/gitleaks" "${INSTALL_DIR}/gitleaks"
         echo -e "${GREEN}✓ gitleaks installed: $(gitleaks version)${NC}"
     else
         echo -e "${RED}✗ gitleaks install aborted: checksum failed${NC}"
@@ -119,7 +161,7 @@ else
             echo -e "${YELLOW}  ⚠ Add ~/.local/bin to your PATH to use semgrep${NC}"
         fi
     fi
-    
+
     if command -v semgrep &> /dev/null; then
         echo -e "${GREEN}✓ semgrep installed: $(semgrep --version)${NC}"
     else
@@ -138,34 +180,31 @@ else
     echo -e "${BLUE}  Fetching latest release info...${NC}"
     OSV_VERSION=$(curl -s "https://api.github.com/repos/google/osv-scanner/releases/latest" | grep -Po '"tag_name": "v\K[0-9.]+')
     echo -e "${BLUE}  Version: v${OSV_VERSION}${NC}"
-    
-    # Note: osv-scanner release binaries use "linux_amd64" naming even for v2
-    # Let's use go install as fallback if binary not available for arm64
+
+    # Prefer go install as universal fallback (builds natively for any OS/arch)
     if command -v go &> /dev/null; then
         echo -e "${BLUE}  Using go install (builds from source, architecture-native)...${NC}"
         go install "github.com/google/osv-scanner/v2/cmd/osv-scanner@v${OSV_VERSION}"
         # go install puts binary in $GOPATH/bin or ~/go/bin
         if [[ -f "$HOME/go/bin/osv-scanner" ]]; then
-            sudo cp "$HOME/go/bin/osv-scanner" /usr/local/bin/osv-scanner
-            sudo chmod +x /usr/local/bin/osv-scanner
+            install_binary "$HOME/go/bin/osv-scanner" "${INSTALL_DIR}/osv-scanner"
         fi
     else
         echo -e "${BLUE}  Downloading official binary...${NC}"
-        binary_name="osv-scanner_${OSV_VERSION}_${OSV_ARCH}"
-        download_url="https://github.com/google/osv-scanner/releases/latest/download/${binary_name}"
+        binary_name="osv-scanner_${OSV_VERSION}_${OSV_OS_ARCH}"
+        download_url="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/${binary_name}"
         checksums_url="https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_${OSV_VERSION}_checksums.txt"
-        
+
         wget -q --show-progress -O "$TMPDIR/osv-scanner" "$download_url"
-        
+
         if verify_github_checksum "$TMPDIR/osv-scanner" "$checksums_url" "$binary_name"; then
-            sudo cp "$TMPDIR/osv-scanner" /usr/local/bin/osv-scanner
-            sudo chmod +x /usr/local/bin/osv-scanner
+            install_binary "$TMPDIR/osv-scanner" "${INSTALL_DIR}/osv-scanner"
         else
             echo -e "${RED}✗ osv-scanner install aborted: checksum failed${NC}"
             exit 1
         fi
     fi
-    
+
     if command -v osv-scanner &> /dev/null; then
         echo -e "${GREEN}✓ osv-scanner installed: $(osv-scanner --version)${NC}"
     else
@@ -181,23 +220,70 @@ echo -e "${YELLOW}[4/5] Installing trivy...${NC}"
 if check_installed "trivy"; then
     echo ""
 else
-    echo -e "${BLUE}  Adding official Aqua Security APT repository...${NC}"
-    
-    sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-    
-    # Download and dearmor GPG key
-    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-    
-    # Add repo with signed-by directive
-    echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-    
-    echo -e "${BLUE}  Updating package lists...${NC}"
-    sudo apt-get update
-    
-    echo -e "${BLUE}  Installing trivy...${NC}"
-    sudo apt-get install -y trivy
-    
-    echo -e "${GREEN}✓ trivy installed: $(trivy -v)${NC}"
+    if [[ "$OS" == "Darwin" ]]; then
+        # macOS: prefer Homebrew, fallback to binary
+        if command -v brew &> /dev/null; then
+            echo -e "${BLUE}  Installing trivy via Homebrew...${NC}"
+            brew install aquasecurity/trivy/trivy
+        else
+            echo -e "${BLUE}  Homebrew not found. Downloading binary...${NC}"
+            TRIVY_VERSION=$(curl -s "https://api.github.com/repos/aquasecurity/trivy/releases/latest" | grep -Po '"tag_name": "v\K[0-9.]+')
+            echo -e "${BLUE}  Version: v${TRIVY_VERSION}${NC}"
+
+            binary_name="trivy_${TRIVY_VERSION}_${TRIVY_OS_ARCH}.tar.gz"
+            download_url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${binary_name}"
+
+            wget -q --show-progress -O "$TMPDIR/trivy.tar.gz" "$download_url"
+            tar xf "$TMPDIR/trivy.tar.gz" -C "$TMPDIR" trivy
+            install_binary "$TMPDIR/trivy" "${INSTALL_DIR}/trivy"
+        fi
+    else
+        # Linux: detect package manager (APT vs RPM vs binary)
+        if command -v apt-get &> /dev/null; then
+            echo -e "${BLUE}  Detected Debian/Ubuntu. Using APT repository...${NC}"
+
+            sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+
+            # Download and dearmor GPG key
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+
+            # Add repo with signed-by directive
+            echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+
+            echo -e "${BLUE}  Updating package lists...${NC}"
+            sudo apt-get update
+
+            echo -e "${BLUE}  Installing trivy...${NC}"
+            sudo apt-get install -y trivy
+        elif command -v yum &> /dev/null || command -v dnf &> /dev/null; then
+            echo -e "${BLUE}  Detected RHEL/CentOS/Fedora. Using RPM repository...${NC}"
+
+            sudo rpm -Uvh https://aquasecurity.github.io/trivy-repo/rpm/releases/trivy-release.rpm
+
+            if command -v dnf &> /dev/null; then
+                sudo dnf install -y trivy
+            else
+                sudo yum install -y trivy
+            fi
+        else
+            echo -e "${YELLOW}  No supported package manager found. Falling back to binary download...${NC}"
+            TRIVY_VERSION=$(curl -s "https://api.github.com/repos/aquasecurity/trivy/releases/latest" | grep -Po '"tag_name": "v\K[0-9.]+')
+            echo -e "${BLUE}  Version: v${TRIVY_VERSION}${NC}"
+
+            binary_name="trivy_${TRIVY_VERSION}_${TRIVY_OS_ARCH}.tar.gz"
+            download_url="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${binary_name}"
+
+            wget -q --show-progress -O "$TMPDIR/trivy.tar.gz" "$download_url"
+            tar xf "$TMPDIR/trivy.tar.gz" -C "$TMPDIR" trivy
+            install_binary "$TMPDIR/trivy" "${INSTALL_DIR}/trivy"
+        fi
+    fi
+
+    if command -v trivy &> /dev/null; then
+        echo -e "${GREEN}✓ trivy installed: $(trivy -v)${NC}"
+    else
+        echo -e "${RED}✗ trivy not found in PATH${NC}"
+    fi
     echo ""
 fi
 
@@ -209,11 +295,11 @@ if check_installed "npq"; then
     echo ""
 else
     echo -e "${BLUE}  Pre-install verification of npq package...${NC}"
-    
+
     # Stage 1: Remote recon
     echo -e "${BLUE}  [Stage 1] Checking npm registry metadata...${NC}"
     npm info npq --json 2>/dev/null | jq '{version: .version, date: .time[.version], downloads: .downloads["last-week"], maintainers: .maintainers | length, scripts: (.scripts | keys)}' || true
-    
+
     # Stage 2: Check for install scripts
     install_scripts=$(npm info npq --json 2>/dev/null | jq -r '.scripts | to_entries[] | select(.key | test("install|prepare|postinstall|preinstall")) | .key' || true)
     if [[ -n "$install_scripts" ]]; then
@@ -232,7 +318,7 @@ else
             echo -e "${YELLOW}  ⚠ Scripts present but not executed. Review before re-installing without --ignore-scripts:${NC}"
             echo -e "${YELLOW}    $installed_scripts${NC}"
         fi
-        
+
         echo -e "${GREEN}✓ npq installed (with --ignore-scripts). To enable full functionality, review scripts then reinstall without flag.${NC}"
     else
         echo -e "${GREEN}  ✓ No install scripts detected${NC}"
@@ -246,6 +332,7 @@ fi
 # Summary
 # =============================================================================
 echo -e "${BLUE}=== Installation Summary ===${NC}"
+echo -e "${BLUE}Platform: $OS ($ARCH)${NC}"
 echo ""
 for tool in gitleaks semgrep osv-scanner trivy npq; do
     if command -v "$tool" &> /dev/null; then
@@ -257,4 +344,4 @@ for tool in gitleaks semgrep osv-scanner trivy npq; do
 done
 
 echo ""
-echo -e "${BLUE}All tools installed with verification. Run 'skill_view(\"solvency/repo-security-audit\")' for usage.${NC}"
+echo -e "${BLUE}All tools installed with verification.${NC}"

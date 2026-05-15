@@ -209,7 +209,6 @@ The skill recommended auditing install commands with the same staged framework. 
 
 ### Open Work
 
-- Publish LinkedIn post (draft finalized, 202 words)
 - Evaluate systemd-nspawn dev sandbox for isolated dev environments
 - `sudo apt update && sudo apt upgrade` (79 regular updates, 16 ESM security updates pending)
 - As new attack patterns emerge, append to `references/security-patterns-comprehensive.md` and update quick-reference tables in `SKILL.md` and `AGENT_ADOPTION.md`

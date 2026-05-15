@@ -73,11 +73,10 @@ When a new attack pattern emerges:
 
 ### 6. Content Creation from This Skill
 
-If you're writing LinkedIn posts, blog articles, or briefs from this material:
+If you're writing blog articles or briefs from this material:
 - **Voice:** Non-coder who had to ask AI to explain things. Self-deprecating, curious, not an authority.
 - **Angle:** Bridge between technical and general audience. "Here's what I learned after asking a bunch of questions."
 - **Process:** Draft → anbeeld-writing structural pass → humanizer-pass voice injection
-- **Length:** 200-225 words for LinkedIn feed posts
 
 ### 7. Confidence Labels Are Mandatory
 
@@ -105,7 +104,7 @@ Never assert without evidence.
 2. **Test the tools:** Pick a safe repo, run Stage 3 commands, verify they work
 3. **Sandbox evaluation:** Explore systemd-nspawn for isolated dev environments
 4. **New patterns:** As incidents happen, append to `references/security-patterns-comprehensive.md`
-5. **Content:** Publish the LinkedIn post when user is ready
+5. **Content:** Publish blog articles or briefs when user is ready
 
 ---
 

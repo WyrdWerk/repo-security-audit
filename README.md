@@ -10,18 +10,15 @@ This skill gives you a **staged framework** to check repos and packages before t
 
 ---
 
-## The Three Stages
+## Two Levels
 
-### Stage 1: Remote Recon (No Clone)
-Check stars, commits, install scripts, known CVEs — all without downloading anything.
+### Level 1: Surface Check (No Clone, No Extra Tools)
+Check stars, commits, install scripts, known CVEs, exotic dependencies — all with just `curl`, `npm`, and `jq`. No download required.
 
-### Stage 2: Surface Red Flags (Still No Clone)
-Spot exotic dependencies, VS Code task abuse, AI agent injection — via HTTP calls only.
+### Level 2: Deep Dive (Requires Security Toolkit)
+Run gitleaks, semgrep, osv-scanner, trivy on an isolated `/tmp` clone before migrating to your main system.
 
-### Stage 3: Deep Audit (Clone to `/tmp` First)
-Run gitleaks, semgrep, osv-scanner, trivy on an isolated copy before migrating to your main system.
-
-**Most threats can be spotted in Stage 1.** You rarely need Stage 3.
+**Most threats can be spotted in Level 1.** You rarely need Level 2.
 
 ---
 
@@ -48,29 +45,30 @@ For full detail, load `references/security-patterns-comprehensive.md`.
 | File | Purpose |
 |------|---------|
 | `SKILL.md` | Lightweight quick-reference skill |
+| `AGENT_ADOPTION.md` | Agent-agnostic adoption guide (any AI agent can use this) |
 | `references/security-patterns-comprehensive.md` | Full attack patterns, commands, tooling |
 | `AGENTS.md` | Operational guide for agents continuing this work |
-| `CONVERSATION.md` | Session context and decisions (historical) |
 | `RESEARCH.md` | Embedded deep research on supply chain threats |
-| `scripts/install-security-toolkit.sh` | Installer for gitleaks, semgrep, osv-scanner, trivy, npq |
+| `scripts/install-security-toolkit.sh` | Installer for Linux / macOS (x86_64, amd64, aarch64, arm64) |
+| `scripts/install-security-toolkit.ps1` | Installer for Windows (x64/AMD64) |
 
 ---
 
 ## Security Toolkit
 
-Five tools, all installed via a single script with checksum verification:
+Five tools, installed via platform-native scripts with checksum verification:
 
-| Tool | What It Does | Stars |
-|------|-------------|-------|
-| **gitleaks** | Find leaked secrets in Git history | 18k+ |
-| **semgrep** | Static analysis for suspicious code | 15k+ |
-| **osv-scanner** | Check dependencies for known CVEs | 6k+ |
-| **trivy** | Comprehensive vuln + secret + config scan | 25k+ |
-| **npq** | Pre-install npm package sanity check | ~500 |
+| Tool | What It Does | Stars | Platforms |
+|------|-------------|-------|-----------|
+| **gitleaks** | Find leaked secrets in Git history | 18k+ | Linux, macOS, Windows; x64 + ARM64 |
+| **semgrep** | Static analysis for suspicious code | 15k+ | Any (Python pip) |
+| **osv-scanner** | Check dependencies for known CVEs | 6k+ | Linux, macOS, Windows; x64 + ARM64 |
+| **trivy** | Comprehensive vuln + secret + config scan | 25k+ | Linux, macOS, Windows; x64 + ARM64 |
+| **npq** | Pre-install npm package sanity check | ~500 | Any (Node.js) |
 
-```bash
-bash scripts/install-security-toolkit.sh
-```
+**Install:**
+- **Linux / macOS:** `bash scripts/install-security-toolkit.sh`
+- **Windows:** `PowerShell -ExecutionPolicy Bypass -File scripts/install-security-toolkit.ps1`
 
 ---
 

@@ -163,7 +163,10 @@ npm audit
 
 ## Level 2 — Deep Dive (Requires Security Toolkit)
 
-**Prerequisite:** Run `bash scripts/install-security-toolkit.sh` to install the 5 tools below. These are only needed when you want full code-level assurance before putting a repo on your main system.
+**Prerequisite:** Install the 5 tools below. These are only needed when you want full code-level assurance before putting a repo on your main system.
+
+- **Linux / macOS:** `bash scripts/install-security-toolkit.sh` (supports x86_64, amd64, aarch64, arm64)
+- **Windows:** `PowerShell -ExecutionPolicy Bypass -File scripts/install-security-toolkit.ps1` (supports x64/AMD64)
 
 ### Deep Audit Commands
 
@@ -286,7 +289,7 @@ When reporting findings:
 
 ## Safety Audit: Five Security Toolkit Tools
 
-The following Stage 1/2 remote recon was performed on the five tools installed by `scripts/install-security-toolkit.sh`:
+The following Stage 1/2 remote recon was performed on the five tools installed by the security toolkit installer (Linux/macOS via `install-security-toolkit.sh`, Windows via `install-security-toolkit.ps1`):
 
 ### gitleaks (gitleaks/gitleaks)
 - **Stars:** 26,970 | **License:** MIT | **Active:** Last push 2026-05-13, release v8.30.1 on 2026-03-21

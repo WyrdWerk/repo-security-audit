@@ -73,7 +73,10 @@ npm audit
 
 ### Level 2 — Deep Dive (Requires Security Toolkit)
 
-**Prerequisite:** Run `bash scripts/install-security-toolkit.sh` to install the 5 tools below. These are only needed when you want full code-level assurance before putting a repo on your main system.
+**Prerequisite:** Install the 5 tools below. These are only needed when you want full code-level assurance before putting a repo on your main system.
+
+- **Linux / macOS:** `bash scripts/install-security-toolkit.sh`
+- **Windows:** `PowerShell -ExecutionPolicy Bypass -File scripts/install-security-toolkit.ps1`
 
 ```bash
 # Clone to temp first — NEVER --recursive on untrusted repos
